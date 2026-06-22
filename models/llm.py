@@ -4,49 +4,106 @@ import os
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from langchain_hyperbrowser import HyperbrowserLoader
+from langchain_chroma import Chroma
+
 # from langchain.chains import RetrievalQAWithSourcesChain as RetrievalQA
 # from langchain.text_splitter import RecursiveCharacterTextSplitter
 # from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 # from langchain.document_loaders import UnstructuredURLLoader
 
-load_dotenv()
+CHUNK_SIZE = 1000
+EMBEDDING_MODEL = "Alibaba-NLP/gte-base-en-v1.5"
+VECTORSTORE_DIR = pATH(__file__).parent / "resources/vectorstore"
+COLLECTION_NAME = "research"
+
+llm = None
+vector_store = None
+
+def initialize_components():
+    global llm, vector_store
+    if llm is None:
+        llm = ChatGroq(
+            model="qwen/qwen3-32b",
+            temperature=0, 
+            max_tokens=None,
+            reasoning_format="parsed",
+            timeout=None,
+            max_retries=2,
+            api_key=api_key
+            # other params...
+        )
+    if vector_store is None:
+        ef = HuggingFaceEmbeddings(
+            model_name = "EMBEDDING_MODEL",
+            model_kwargs = {"trust_remote_code" : True}
+        )
+        vector_store = Chroma(
+            collection_name = COLLECTIOIN_NAME,
+            persist_directory = VECTORSTORE_DIR,
+            embedding_function = ef
+        )
 
 def process_urls(urls):
     """This function scrapes data from a url and stores it in a vector DB
        :param urls: input urls
        :return: 
     """
-    
-loader = UnstructuredURLLoader(urls=urls)
-data = loader.load()
+    print("Initialize components")
+    initialize_components()
+    vector_store.reset_collection()
+        
+    print("Load data")
+    loader = UnstructuredURLLoader(urls=urls)
+    data = loader.load()
 
-RecursiveCharacterTextSolitter(
-    seperators=["\n\n", "\n", ".", " "]
-    chunk_size=CHUNK_SIZE
-)
+    print("Split text")
+    text_splitter = RecursiveCharacterTextSolitter(
+            seperators=["\n\n", "\n", ".", " "]
+            chunk_size=CHUNK_SIZE
+        )
+    # WE CALL THE CHUNKS DOCS HERE
+    docs = text_splitter.split_documents(data)
+
+    print("Add docs to vector db")
+    uuids = [str(uuid4()) for _ in range(len(docs))]
+    vector_store.add_documents(docs, ids=uuids)
+    
+
+
 
 if __name__ == "__main__":
-    urls = []
+    urls = [
+        
+        
+    ]
     
     process_urls(urls)
+    results = vector_store.similarity_search(
+        "30 year mortgage rate",
+        k=2
+    )
+    print(results)
 
 
 # api_key = os.getenv("GROQ_API_KEY")
 
 # print(api_key)
-llm = ChatGroq(
-    model="qwen/qwen3-32b",
-    temperature=0, 
-    max_tokens=None,
-    reasoning_format="parsed",
-    timeout=None,
-    max_retries=2,
-    api_key=api_key
-    # other params...
-)
 
-prompt = llm.invoke("What year did all countries of Africa gain independence")
-print(prompt)
+
+
+initialize_components()
+
+
+
+    
+    
+    
+    
+    
+-----------------------------------------------------------------------------------------
+    
+    prompt = llm.invoke("What year did all countries of Africa gain independence")
+    print(prompt)
 
 
 loader = HyperbrowserLoader(
@@ -56,3 +113,14 @@ loader = HyperbrowserLoader(
 
 docs = loader.load()
 docs[0]
+
+from firecrawl import Firecrawl
+
+firecrawl = Firecrawl(
+  # No API key needed to get started — add one for higher rate limits:
+  # api_key="fc-YOUR-API-KEY",
+)
+
+# Scrape a website:
+doc = firecrawl.scrape("https://firecrawl.dev", formats=["markdown", "html"])
+print(doc)
