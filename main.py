@@ -1,11 +1,15 @@
-from fastapi import FastAPI
-
-app = FastAPI()
+import streamlit as st
 
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+
+# from fastapi import FastAPI
+
+# app = FastAPI()
+
+
+# @app.get("/")
+# def read_root():
+#     return {"Hello": "World"}
 
 
 # @app.get("/items/{item_id}")

@@ -3,17 +3,19 @@ import os
 
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from langchain_hyperbrowser import HyperbrowserLoader
 from langchain_chroma import Chroma
+from langchain.document_loaders import UnstructuredURLLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_huggingface.embeddings import HuggingFaceEmbeddings
 
 # from langchain.chains import RetrievalQAWithSourcesChain as RetrievalQA
-# from langchain.text_splitter import RecursiveCharacterTextSplitter
-# from langchain_huggingface.embeddings import HuggingFaceEmbeddings
-# from langchain.document_loaders import UnstructuredURLLoader
+# from langchain_hyperbrowser import HyperbrowserLoader
+
+load_dotenv()
 
 CHUNK_SIZE = 1000
 EMBEDDING_MODEL = "Alibaba-NLP/gte-base-en-v1.5"
-VECTORSTORE_DIR = pATH(__file__).parent / "resources/vectorstore"
+VECTORSTORE_DIR = Path(__file__).parent / "resources/vectorstore"
 COLLECTION_NAME = "research"
 
 llm = None
@@ -23,7 +25,7 @@ def initialize_components():
     global llm, vector_store
     if llm is None:
         llm = ChatGroq(
-            model="qwen/qwen3-32b",
+            model="qwen/qwen3-32b", # (This Model is being decommisioned from July 17. Change Model)
             temperature=0, 
             max_tokens=None,
             reasoning_format="parsed",
@@ -38,8 +40,8 @@ def initialize_components():
             model_kwargs = {"trust_remote_code" : True}
         )
         vector_store = Chroma(
-            collection_name = COLLECTIOIN_NAME,
-            persist_directory = VECTORSTORE_DIR,
+            collection_name = COLLECTION_NAME,
+            persist_directory = str(VECTORSTORE_DIR),
             embedding_function = ef
         )
 
@@ -49,7 +51,9 @@ def process_urls(urls):
        :return: 
     """
     print("Initialize components")
+    # This checks if the vecto db has been initialized previously 
     initialize_components()
+    # This resets the Db and aggregates the new urls together with the previous ones
     vector_store.reset_collection()
         
     print("Load data")
@@ -57,18 +61,18 @@ def process_urls(urls):
     data = loader.load()
 
     print("Split text")
-    text_splitter = RecursiveCharacterTextSolitter(
-            seperators=["\n\n", "\n", ".", " "]
+    text_splitter = RecursiveCharacterTextSplitter(
+            seperators=["\n\n", "\n", ".", " "],
             chunk_size=CHUNK_SIZE
         )
     # WE CALL THE CHUNKS DOCS HERE
     docs = text_splitter.split_documents(data)
 
     print("Add docs to vector db")
+    # Get unique ids for each document chunk
     uuids = [str(uuid4()) for _ in range(len(docs))]
     vector_store.add_documents(docs, ids=uuids)
     
-
 
 
 if __name__ == "__main__":
@@ -91,7 +95,7 @@ if __name__ == "__main__":
 
 
 
-initialize_components()
+
 
 
 
@@ -102,25 +106,25 @@ initialize_components()
     
 -----------------------------------------------------------------------------------------
     
-    prompt = llm.invoke("What year did all countries of Africa gain independence")
-    print(prompt)
+#     prompt = llm.invoke("What year did all countries of Africa gain independence")
+#     print(prompt)
 
 
-loader = HyperbrowserLoader(
-    urls="https://jumbo.nl",
-    api_key=api_key,
-)
+# loader = HyperbrowserLoader(
+#     urls="https://jumbo.nl",
+#     api_key=api_key,
+# )
 
-docs = loader.load()
-docs[0]
+# docs = loader.load()
+# docs[0]
 
-from firecrawl import Firecrawl
+# from firecrawl import Firecrawl
 
-firecrawl = Firecrawl(
+# firecrawl = Firecrawl(
   # No API key needed to get started — add one for higher rate limits:
   # api_key="fc-YOUR-API-KEY",
-)
+# )
 
 # Scrape a website:
-doc = firecrawl.scrape("https://firecrawl.dev", formats=["markdown", "html"])
-print(doc)
+# doc = firecrawl.scrape("https://firecrawl.dev", formats=["markdown", "html"])
+# print(doc)
