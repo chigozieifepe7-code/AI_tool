@@ -8,10 +8,8 @@ from langchain_chroma import Chroma
 from langchain_community.document_loaders import UnstructuredURLLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-from sentence_transformers import SentenceTransformer
+from langchain_classic.chains import RetrievalQAWithSourcesChain
 
-# from langchain.chains import RetrievalQAWithSourcesChain as RetrievalQA
-# from langchain_hyperbrowser import HyperbrowserLoader
 
 load_dotenv()
 
@@ -22,7 +20,7 @@ COLLECTION_NAME = "research"
 
 llm = None
 vector_store = None
-api_key = "GROQ_API_KEY"
+api_key = os.getenv("GROQ_API_KEY")
 
 
 def initialize_components():
@@ -32,12 +30,8 @@ def initialize_components():
             # (This Model is being decommisioned from July 17. Change Model)
             model="qwen/qwen3-32b",
             temperature=0,
-            max_tokens=None,
-            reasoning_format="parsed",
-            timeout=None,
             max_retries=2,
             api_key=api_key
-            # other params...
         )
     if vector_store is None:
         ef = HuggingFaceEmbeddings(
@@ -79,6 +73,17 @@ def process_urls(urls):
     vector_store.add_documents(docs, ids=uuids)
 
 
+def generate_answer(query):
+    if not vector_store:
+        raise RuntimeError("Vector DB is not initialized")
+    chain = RetrievalQAWithSourcesChain.from_llm(
+        llm=llm, retriever=vector_store.as_retriever())
+    result = chain.invoke({"question": query}, return_only_outputs=True)
+    sources = result.get("sources", "")
+
+    return result["answer"], sources
+
+
 if __name__ == "__main__":
     urls = [
         "https://www.tue.nl/en/working-at-tue/vacancy-overview/engineering-doctorate-engd-programs-in-data-software-systems-design",
@@ -87,11 +92,10 @@ if __name__ == "__main__":
     ]
 
     process_urls(urls)
-    results = vector_store.similarity_search(
-        "30 year mortgage rate",
-        k=3
-    )
-    print(results)
+    answer, sources = generate_answer(
+        "What is the need for this Job vacancy? What are the skills needed to complete the tasks in this vacancy? What skills will this program give me?")
+    print(f"Answer: {answer}")
+    print(f"Sources: {sources}")
 
 
 # api_key = os.getenv("GROQ_API_KEY")

@@ -1,7 +1,8 @@
 import streamlit as st
 
+st.title("")
 
-
+st.sidebar.text_input("URL 1")
 # from fastapi import FastAPI
 
 # app = FastAPI()
